@@ -1,0 +1,143 @@
+#!/usr/bin/python
+#
+# AnonStream Server
+#
+# For teh lulz
+#
+
+#from codec.codec import Codec, Input
+from codec import util as cons
+from threading import Thread
+import socket
+
+class HTTPHandler(Thread):
+	def __init__(self,sock,serv):
+		self.sock = sock
+		self.serv = serv
+		self.headers = dict()
+		Thread.__init__(self)
+
+	def run(self):
+		d = str(self.sock.recv(1024))
+
+		self.handle(d)
+		self.sock.close()
+
+	def _get(self,data):
+		self.headers['X-Powered-By'] = 'AnonStream'
+		path = data.split(' ')[1].strip()
+		if path in ['/','/index','/index.html']:
+			self._file('index.html')
+		elif path == '/listen.ogg':
+			self._stream()
+		elif path == '/favicon.ico':
+			self._favico()
+		else:
+			self._file(str(path[1:]))		
+
+	def _favico(self):
+		with open('docroot/favicon.ico', 'rb') as f:
+			data = f.read()
+			self.send('HTTP/1.1 200 OK\r\n')
+			self.send('Content-Type: image/png\r\n')
+			self.send('Content-Length: %d\r\n'%len(data))
+			self.send('X-Powered-By: AnonStream\r\n')
+			self.send('\r\n')
+			self.sock.send(data)
+			
+	def _file(self,path):
+		d = None
+		path = path.split('../')[0]
+		try:
+			with open('docroot/%s'%path,'r') as f:
+				d = f.read()
+		except Exception as e:
+			self.err(404,'Not Found', '%s not found'% path)
+			cons.err(e)
+			return
+		self.send('HTTP/1.1 200 OK\r\n')
+		if path.endswith(".css"):
+			self.send('Content-Type: text/css\r\n')
+		else:
+			self.send('Content-Type: text/html\r\n')
+		self._str(d)
+		
+	def _str(self,s):
+		self.headers['Content-Length'] = len(s)
+		for k in self.headers.keys():
+			self.send('%s: %s\r\n' %(k,self.headers[k]))
+		self.send('\r\n%s'%s)
+	
+	def _stream(self): # stream master audio down the connection
+		pass
+
+	def handle(self,d):
+		meth = d.strip()[:4].strip()
+		if meth == 'GET':
+			self._get(d)
+		self.sock.close()
+		
+
+	def _mk_headers(self,data):
+		if self.headers:
+			del self.headers
+		self.headers = dict()
+		for line in data.split('\r\n'):
+			d = line.split(':')
+			self.headers[d[0].trim()] = d[1].trim()
+			
+	def send(self,data):
+		self.sock.send(data)
+
+	def err(self,code,reason,message):
+		self.send('HTTP/1.1 %d %s\r\n'%(code,reason))
+		self.headers['Content-Length'] = str(len(message))
+		self.headers['Content-Type'] = 'text/html'
+		for k in self.headers.keys():
+			self.send('%s: %s\r\n' % ( k, self.headers[k] ))
+		self.send('\r\n%s'%message)
+		self.sock.close()
+
+class Server(Thread):
+	"""
+	AnonStream Server
+	"""
+	def __init__(self,bindaddr,handler_class):
+		cons.prnt('Starting Server')
+		self.sock = socket.socket()
+		self.addr = bindaddr
+		self.handler = handler_class
+		self.on = True
+		self.codec = None
+
+
+
+
+		Thread.__init__(self)
+		
+	def run(self):
+		try:
+			self.sock.bind(self.addr)
+		except Exception as e:
+			cons.err('Bind Error: %s'%e)
+			return
+		self.sock.listen(10)
+		while self.on:
+			# fork off handler
+			self.handler(self.sock.accept()[0],self).start()
+			
+def main(args):
+	s = Server((args[0],int(args[1])),HTTPHandler)
+	s.start()
+
+
+if __name__ == '__main__':
+	import sys
+	args = sys.argv
+	if len(args) == 3:
+		try:
+			main(args[1:])
+		except Exception as e:
+			cons.err(e)
+	else:
+		cons.err ( 'Usage: %s iface port' % args[0] )

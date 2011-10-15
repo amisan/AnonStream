@@ -1,0 +1,30 @@
+AnonStream Readme File
+
+What is anonstream?
+AnonStream is a custom httpd that servs on Open Internet Radio website inside i2p.
+
+How does (will) it work?
+
+The site will have multiple stations
+i.e /general /music/techno /talk/political/green
+
+an audio stream can be fetched via HTTP GET and is publicly availible
+broadcast data is submitted via HTTP POST and requires a login cookie 
+they are located at /station/name/stream
+
+/general/stream /music/techno/stream /talk/poilitical/green/stream
+
+A user needs an  account to join the broadcast
+
+Moderation controls similar to irc will be in place
+
++v immune to m flag 
++k can kick users
++o can add +v +k +o to users
++m station is muted
+-m station is unmuted
+
+An In Browser Java Applet will record an compress audio and send it to the stream
+via HTTP POST. Flash will NOT EVER EVER be used.
+
+An Offline Client is not planned yet.
