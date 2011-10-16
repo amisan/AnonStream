@@ -1,0 +1,10 @@
+This is a specification for the anonstream codec wrapper.
+
+What the FUCK does it do?
+
+The anonstream codec on a high level will take multiple streams of speex compressed
+audio and *magically* turn it into a single ogg vorbis audio stream.
+It will be thread safe too :3
+
+currently the plan is to use libfishsound and the python FFI for C
+
